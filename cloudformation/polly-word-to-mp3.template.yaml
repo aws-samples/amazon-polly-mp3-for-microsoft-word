@@ -1,0 +1,143 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template deploys a serverless architecture to convert Microsoft
+  Word documents to an audio playlist using Polly. (qs-1ph53158b)
+Parameters:
+  ArtifactBucket:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    Description: S3 bucket containing the templates and other artifacts to deploy
+      the stack. It can include numbers, lowercase letters, uppercase letters, and
+      hyphens (-). It cannot start or end with a hyphen (-).
+    Type: String
+  ArtifactKeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    Description: S3 object key prefix. It can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
+    Default: ''
+    Type: String
+Resources:
+  WordToPollyMetadata:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: FileName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: FileName
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: '2'
+        WriteCapacityUnits: '2'
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: 'TRUE'
+  PollyWordConverterLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: PollyS3DynamodbAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                  - dynamodb:DeleteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${WordToPollyMetadata}'
+              - Effect: Allow
+                Action:
+                  - polly:*
+                Resource:
+                  - '*'
+              - Effect: Allow
+                Action:
+                  - s3:*
+                Resource:
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}'
+                  - !Sub 'arn:aws:s3:::${ArtifactBucket}/*'
+  SSMLToMP3Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref 'ArtifactBucket'
+        S3Key: !Sub '${ArtifactKeyPrefix}assets/ssml-to-mp3.zip'
+      Environment:
+        Variables:
+          pollyMetadataTable: !Ref 'WordToPollyMetadata'
+      Handler: ssml-to-mp3.lambda_handler
+      Runtime: python3.6
+      Timeout: '15'
+      Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
+  m3uBuilderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref 'ArtifactBucket'
+        S3Key: !Sub '${ArtifactKeyPrefix}assets/m3u-generator.zip'
+      Environment:
+        Variables:
+          pollyMetadataTable: !Ref 'WordToPollyMetadata'
+      Handler: m3u-generator.lambda_handler
+      Runtime: python3.6
+      Timeout: '15'
+      Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
+  PollyWordReaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref 'ArtifactBucket'
+        S3Key: !Sub '${ArtifactKeyPrefix}assets/polly-word-reader.jar'
+      Handler: com.amazon.polly.demos.wordconverter.FAQDocToSSML::handleRequest
+      Runtime: java8
+      MemorySize: 512
+      Timeout: '15'
+      Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
+  SSMLToMP3FunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt 'SSMLToMP3Function.Arn'
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub 'arn:aws:s3:::${ArtifactBucket}'
+  PollyWordReaderFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt 'PollyWordReaderFunction.Arn'
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref 'AWS::AccountId'
+      SourceArn: !Sub 'arn:aws:s3:::${ArtifactBucket}'
+Outputs:
+  SSMLToMP3FunctionARN:
+    Value: !GetAtt 'SSMLToMP3Function.Arn'
+    Description: ARN of SSMLToMP3Function Lambda function
+  PollyWordReaderFunctionARN:
+    Value: !GetAtt 'PollyWordReaderFunction.Arn'
+    Description: ARN of PollyWordReaderFunction Lambda function
+  m3uBuilderFunctionName:
+    Value: !Ref 'm3uBuilderFunction'
+    Description: Name of m3uBuilderFunction Lambda function
+  WordToPollyMetadata:
+    Value: !Ref 'WordToPollyMetadata'
+    Description: Name of WordToPollyMetadata DynamoDB table
