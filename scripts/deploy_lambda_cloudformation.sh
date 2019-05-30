@@ -8,6 +8,41 @@ REGION=$1
 POLLY_ASSETS_BUCKET=$2
 STACK_NAME=$3
 
+echo "Checking for pre-requisites"
+
+checkAndProceed() {
+  cmd=$1
+  name=$2
+  cmd_out=$(${cmd})
+  retVal=$?
+  if [[ ${retVal} -ne 0 ]]; then
+    echo "${name} not present"
+    echo "Please install ${name} and make sure it is available in the path and retry"
+    exit ${retVal}
+  else
+    echo "Found ${name}"
+  fi
+}
+
+checkBucketExists() {
+  bucket=$1
+  cmd_out=$(aws s3 ls ${bucket})
+  retVal=$?
+    if [[ ${retVal} -ne 0 ]]; then
+    echo "${bucket} bucket not present"
+    echo "Please create S3 bucket: ${bucket} in $REGION Region and retry"
+    exit ${retVal}
+  else
+    echo "Found bucket: ${bucket}"
+  fi
+}
+
+checkAndProceed "which sed" "sed"
+checkAndProceed "aws --version" "AWS CLI"
+checkAndProceed "java -version" "Java"
+checkAndProceed "mvn --version" "Apache Maven"
+checkBucketExists "${POLLY_ASSETS_BUCKET}"
+
 cd lambda
 for file in *.py;
 do
