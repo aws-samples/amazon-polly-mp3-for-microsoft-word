@@ -72,8 +72,8 @@ aws cloudformation wait stack-create-complete --stack-name $STACK_NAME --region 
 echo "Successfully launched stack"
 
 echo "CloudFormation outputs: "
-PollyWordReaderFunctionARN=$(aws cloudformation describe-stacks --stack $STACK_NAME --output text | grep OUTPUTS | grep PollyWordReaderFunctionARN | cut -f4)
-SSMLToMP3FunctionARN=$(aws cloudformation describe-stacks --stack $STACK_NAME --output text | grep OUTPUTS | grep SSMLToMP3FunctionARN | cut -f4)
+PollyWordReaderFunctionARN=$(aws cloudformation --region $REGION describe-stacks --stack $STACK_NAME --output text | grep OUTPUTS | grep PollyWordReaderFunctionARN | cut -f4)
+SSMLToMP3FunctionARN=$(aws cloudformation describe-stacks --region $REGION --stack $STACK_NAME --output text | grep OUTPUTS | grep SSMLToMP3FunctionARN | cut -f4)
 
 echo "PollyWordReader Lambda function ARN: ${PollyWordReaderFunctionARN}"
 echo "SSMLToMP3 Lambda function ARN: ${SSMLToMP3FunctionARN}"
