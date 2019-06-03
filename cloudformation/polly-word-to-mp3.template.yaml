@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: This template deploys a serverless architecture to convert Microsoft
-  Word documents to an audio playlist using Polly. (qs-1ph53158b)
+  Word documents to an audio playlist using Amazon Polly. (qs-1ph53158b)
 Parameters:
   ArtifactBucket:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
