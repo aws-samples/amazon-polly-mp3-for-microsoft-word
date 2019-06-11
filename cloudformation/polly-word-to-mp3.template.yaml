@@ -86,7 +86,7 @@ Resources:
           pollyMetadataTable: !Ref 'WordToPollyMetadata'
       Handler: ssml-to-mp3.lambda_handler
       Runtime: python3.6
-      Timeout: '15'
+      Timeout: '300'
       Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
   m3uBuilderFunction:
     Type: AWS::Lambda::Function
@@ -99,7 +99,7 @@ Resources:
           pollyMetadataTable: !Ref 'WordToPollyMetadata'
       Handler: m3u-generator.lambda_handler
       Runtime: python3.6
-      Timeout: '15'
+      Timeout: '300'
       Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
   PollyWordReaderFunction:
     Type: AWS::Lambda::Function
@@ -110,7 +110,7 @@ Resources:
       Handler: com.amazon.polly.demos.wordconverter.FAQDocToSSML::handleRequest
       Runtime: java8
       MemorySize: 512
-      Timeout: '15'
+      Timeout: '300'
       Role: !GetAtt 'PollyWordConverterLambdaRole.Arn'
   SSMLToMP3FunctionPermission:
     Type: AWS::Lambda::Permission
